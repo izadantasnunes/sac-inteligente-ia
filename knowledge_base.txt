@@ -1,0 +1,9 @@
+A empresa atende de segunda a sexta, das 9h às 18h.
+
+O prazo médio de resposta do suporte é de até 24 horas úteis.
+
+Caso o cliente tenha problema com pagamento, boleto, cartão ou PIX, solicitar nome completo, e-mail e número do pedido.
+
+Caso o cliente peça cancelamento, explicar que a solicitação será encaminhada para o setor responsável.
+
+Caso a IA não saiba responder, deve escalar para atendimento humano.

@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAC Inteligente IA</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="newspaper-bg"></div>
+
+<div class="chat-container">
+
+  <header class="chat-header">
+
+    <div class="ceci-icon">
+      <div class="ceci-doll">👩🏻‍💼</div>
+      <span>CECI</span>
+    </div>
+
+    <div>
+      <h1>SAC Inteligente IA</h1>
+      <p>Central inteligente de atendimento</p>
+    </div>
+
+  </header>
+
+  <div class="chat-box" id="chat-box">
+
+    <div class="bot-message">
+      Olá 👋 <br><br>
+      Eu sou a <strong>CECI</strong>, assistente virtual inteligente do jornal.<br><br>
+      Como posso ajudar você hoje?
+    </div>
+
+    <div class="options" id="initial-options">
+
+      <button onclick="selecionarTrilha('novo')">
+        Quero assinar o jornal
+      </button>
+
+      <button onclick="selecionarTrilha('assinante')">
+        Já sou assinante
+      </button>
+
+    </div>
+
+  </div>
+
+  <div class="input-area">
+
+    <input
+      type="text"
+      id="user-input"
+      placeholder="Digite sua mensagem..."
+    >
+
+    <button onclick="sendMessage()">
+      Enviar
+    </button>
+
+  </div>
+
+</div>
+
+<div class="modal" id="payment-modal">
+
+  <div class="modal-content">
+
+    <button
+      class="close-modal"
+      onclick="fecharModal()"
+    >
+      ×
+    </button>
+
+    <div id="modal-body"></div>
+
+  </div>
+
+</div>
+
+<script>
+
+let trilha = "";
+let etapa = "inicio";
+
+let usuario = {
+
+  nome: "",
+  cpf: "",
+  telefone: "",
+  email: "",
+
+  cep: "",
+  logradouro: "",
+  bairro: "",
+  cidade: "",
+  estado: "",
+  numero: "",
+  complemento: "",
+
+  plano: "",
+  periodicidade: "",
+  valorMensal: 0,
+  valorTotal: 0,
+
+  pagamento: "",
+
+  protocolo: "",
+  codigoAssinante: ""
+};
+
+const input = document.getElementById("user-input");
+const chatBox = document.getElementById("chat-box");
+
+input.addEventListener("keydown", function(event) {
+
+  if (event.key === "Enter") {
+    sendMessage();
+  }
+
+});
+
+function addBotMessage(message) {
+
+  chatBox.innerHTML += `
+    <div class="bot-message">
+      ${message}
+    </div>
+  `;
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addUserMessage(message) {
+
+  chatBox.innerHTML += `
+    <div class="user-message">
+      ${message}
+    </div>
+  `;
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addOptions(options) {
+
+  let html = `<div class="options">`;
+
+  options.forEach(option => {
+
+    html += `
+      <button onclick="${option.action}">
+        ${option.label}
+      </button>
+    `;
+  });
+
+  html += `</div>`;
+
+  chatBox.innerHTML += html;
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function selecionarTrilha(tipo) {
+
+  document.querySelectorAll(".options").forEach(opt => opt.remove());
+
+  trilha = tipo;
+
+  if (tipo === "novo") {
+
+    addUserMessage("Quero assinar o jornal");
+
+    etapa = "nome";
+
+    addBotMessage(`
+      Perfeito! Vamos iniciar sua assinatura.<br><br>
+      Informe seu nome completo.
+    `);
+
+  } else {
+
+    addUserMessage("Já sou assinante");
+
+    etapa = "assinante_nome";
+
+    addBotMessage(`
+      Claro 😊<br><br>
+      Informe seu nome completo para localizar seu cadastro.
+    `);
+  }
+}
+
+async function sendMessage() {
+
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  addUserMessage(message);
+
+  input.value = "";
+
+  if (trilha === "novo") {
+
+    fluxoNovoAssinante(message);
+
+  } else if (trilha === "assinante") {
+
+    fluxoAssinante(message);
+
+  } else {
+
+    addBotMessage("Escolha uma das opções acima.");
+  }
+}
+
+/* =========================
+VALIDAÇÕES
+========================= */
+
+function validarCPF(cpf) {
+
+  cpf = cpf.replace(/\D/g, "");
+
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) {
+    return false;
+  }
+
+  let soma = 0;
+  let resto;
+
+  for (let i = 1; i <= 9; i++) {
+    soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+  }
+
+  resto = (soma * 10) % 11;
+
+  if (resto === 10 || resto === 11) resto = 0;
+
+  if (resto !== parseInt(cpf.substring(9, 10))) {
+    return false;
+  }
+
+  soma = 0;
+
+  for (let i = 1; i <= 10; i++) {
+    soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+  }
+
+  resto = (soma * 10) % 11;
+
+  if (resto === 10 || resto === 11) resto = 0;
+
+  return resto === parseInt(cpf.substring(10, 11));
+}
+
+function validarEmail(email) {
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validarTelefone(telefone) {
+
+  const numeros = telefone.replace(/\D/g, "");
+
+  return numeros.length === 10 || numeros.length === 11;
+}
+
+function formatarTelefone(telefone) {
+
+  const numeros = telefone.replace(/\D/g, "");
+
+  if (numeros.length === 11) {
+
+    return `(${numeros.slice(0,2)}) ${numeros.slice(2,7)}-${numeros.slice(7)}`;
+  }
+
+  return telefone;
+}
+
+/* =========================
+NOVO ASSINANTE
+========================= */
+
+async function fluxoNovoAssinante(message) {
+
+  if (etapa === "nome") {
+
+    usuario.nome = message;
+
+    etapa = "cpf";
+
+    addBotMessage("Agora informe seu CPF.");
+
+    return;
+  }
+
+  if (etapa === "cpf") {
+
+    if (!validarCPF(message)) {
+
+      addBotMessage("CPF inválido. Digite novamente.");
+
+      return;
+    }
+
+    usuario.cpf = message;
+
+    etapa = "telefone";
+
+    addBotMessage(`
+      Informe seu telefone com DDD.<br><br>
+      Exemplo: (11) 99999-9999
+    `);
+
+    return;
+  }
+
+  if (etapa === "telefone") {
+
+    if (!validarTelefone(message)) {
+
+      addBotMessage("Telefone inválido.");
+
+      return;
+    }
+
+    usuario.telefone = formatarTelefone(message);
+
+    etapa = "email";
+
+    addBotMessage("Agora informe seu e-mail.");
+
+    return;
+  }
+
+  if (etapa === "email") {
+
+    if (!validarEmail(message)) {
+
+      addBotMessage("E-mail inválido.");
+
+      return;
+    }
+
+    usuario.email = message;
+
+    etapa = "cep";
+
+    addBotMessage("Informe seu CEP.");
+
+    return;
+  }
+
+  if (etapa === "cep") {
+
+    usuario.cep = message.replace(/\D/g, "");
+
+    buscarCEP(usuario.cep);
+
+    return;
+  }
+
+  if (etapa === "numero") {
+
+    usuario.numero = message;
+
+    etapa = "complemento";
+
+    addBotMessage(`
+      Informe complemento:<br><br>
+      apartamento, casa, sala ou referência.
+    `);
+
+    return;
+  }
+
+  if (etapa === "complemento") {
+
+    usuario.complemento = message;
+
+    etapa = "confirmar_endereco";
+
+    addBotMessage(`
+      Confirme seu endereço:<br><br>
+
+      <strong>
+      ${usuario.logradouro},
+      ${usuario.numero}
+      </strong><br>
+
+      Bairro:
+      <strong>${usuario.bairro}</strong><br>
+
+      Cidade:
+      <strong>${usuario.cidade}</strong><br>
+
+      Estado:
+      <strong>${usuario.estado}</strong><br><br>
+
+      Está correto?
+    `);
+
+    addOptions([
+      {
+        label: "Sim, está correto",
+        action: "confirmarEndereco(true)"
+      },
+      {
+        label: "Não, corrigir",
+        action: "confirmarEndereco(false)"
+      }
+    ]);
+
+    return;
+  }
+}
+
+async function buscarCEP(cep) {
+
+  if (cep.length !== 8) {
+
+    addBotMessage("CEP inválido.");
+
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `https://viacep.com.br/ws/${cep}/json/`
+    );
+
+    const data = await response.json();
+
+    if (data.erro) {
+
+      addBotMessage("CEP não encontrado.");
+
+      return;
+    }
+
+    usuario.logradouro = data.logradouro;
+    usuario.bairro = data.bairro;
+    usuario.cidade = data.localidade;
+    usuario.estado = data.uf;
+
+    etapa = "numero";
+
+    addBotMessage(`
+      Endereço localizado:<br><br>
+
+      ${usuario.logradouro}<br>
+      Bairro: ${usuario.bairro}<br>
+      ${usuario.cidade} - ${usuario.estado}<br><br>
+
+      Informe o número do imóvel.
+    `);
+
+  } catch {
+
+    addBotMessage("Erro ao consultar CEP.");
+  }
+}
+
+function confirmarEndereco(confirmado) {
+
+  document.querySelectorAll(".options").forEach(opt => opt.remove());
+
+  if (!confirmado) {
+
+    etapa = "cep";
+
+    addBotMessage("Digite novamente o CEP.");
+
+    return;
+  }
+
+  etapa = "plano";
+
+  addBotMessage("Escolha o tipo de assinatura:");
+
+  addOptions([
+    {
+      label: "Assinatura digital",
+      action: "selecionarPlano('digital')"
+    },
+    {
+      label: "Assinatura física",
+      action: "selecionarPlano('fisico')"
+    },
+    {
+      label: "Física + digital",
+      action: "selecionarPlano('combo')"
+    }
+  ]);
+}
+
+function selecionarPlano(plano) {
+
+  document.querySelectorAll(".options").forEach(opt => opt.remove());
+
+  usuario.plano = plano;
+
+  if (plano === "digital") usuario.valorMensal = 9.90;
+  if (plano === "fisico") usuario.valorMensal = 69.90;
+  if (plano === "combo") usuario.valorMensal = 49.90;
+
+  etapa = "periodicidade";
+
+  addBotMessage(`
+    Plano escolhido com sucesso.<br><br>
+    Escolha a periodicidade:
+  `);
+
+  addOptions([
+    {
+      label: "Mensal",
+      action: "selecionarPeriodicidade('mensal')"
+    },
+    {
+      label: "Trimestral",
+      action: "selecionarPeriodicidade('trimestral')"
+    },
+    {
+      label: "Semestral",
+      action: "selecionarPeriodicidade('semestral')"
+    },
+    {
+      label: "Anual",
+      action: "selecionarPeriodicidade('anual')"
+    }
+  ]);
+}
+
+function selecionarPeriodicidade(periodo) {
+
+  usuario.periodicidade = periodo;
+
+  let meses = 1;
+
+  if (periodo === "trimestral") meses = 3;
+  if (periodo === "semestral") meses = 6;
+  if (periodo === "anual") meses = 12;
+
+  usuario.valorTotal =
+    (usuario.valorMensal * meses * 0.9);
+
+  usuario.valorTotal =
+    Math.floor(usuario.valorTotal) + 0.90;
+
+  addBotMessage(`
+    Valor final da assinatura:<br><br>
+
+    <strong>
+      R$ ${usuario.valorTotal.toFixed(2)}
+    </strong><br><br>
+
+    Escolha a forma de pagamento:
+  `);
+
+  addOptions([
+    {
+      label: "PIX",
+      action: "selecionarPagamento('pix')"
+    },
+    {
+      label: "Boleto",
+      action: "selecionarPagamento('boleto')"
+    },
+    {
+      label: "Cartão débito",
+      action: "selecionarPagamento('debito')"
+    },
+    {
+      label: "Cartão crédito",
+      action: "selecionarPagamento('credito')"
+    }
+  ]);
+}
+
+function selecionarPagamento(tipo) {
+
+  usuario.pagamento = tipo;
+
+  if (tipo === "pix") abrirPix();
+  if (tipo === "boleto") abrirBoleto();
+  if (tipo === "debito") abrirCartao("débito");
+  if (tipo === "credito") abrirCartao("crédito");
+}
+
+function abrirPix() {
+
+  abrirModal(`
+    <h2>Pagamento PIX</h2>
+
+    <div class="fake-qrcode">
+      QR
+    </div>
+
+    <p class="pix-code">
+      000201PIXJORNALDIGITAL
+    </p>
+
+    <button onclick="copiarPix()">
+      Copiar código PIX
+    </button>
+
+    <p class="timer">
+      Tempo restante:
+      <span id="contador">60</span>s
+    </p>
+  `);
+
+  iniciarContador();
+}
+
+function abrirBoleto() {
+
+  const entrada = usuario.valorTotal * 0.4;
+
+  abrirModal(`
+    <h2>Boleto</h2>
+
+    <p>
+      Entrada:
+      <strong>
+        R$ ${entrada.toFixed(2)}
+      </strong>
+    </p>
+
+    <button onclick="baixarBoleto()">
+      Baixar boleto
+    </button>
+
+    <button onclick="mensagemFinal()">
+      Confirmar geração
+    </button>
+  `);
+}
+
+function abrirCartao(tipo) {
+
+  abrirModal(`
+    <h2>Pagamento cartão</h2>
+
+    <select class="card-input">
+      <option>Visa</option>
+      <option>Mastercard</option>
+      <option>Elo</option>
+    </select>
+
+    <input
+      class="card-input"
+      placeholder="Nome do cartão"
+    >
+
+    <input
+      class="card-input"
+      placeholder="Número do cartão"
+    >
+
+    <div class="card-row">
+
+      <input
+        class="card-input"
+        placeholder="Validade"
+      >
+
+      <input
+        class="card-input"
+        placeholder="CVV"
+      >
+
+    </div>
+
+    <button onclick="mensagemFinal()">
+      Efetuar pagamento
+    </button>
+  `);
+}
+
+function mensagemFinal() {
+
+  usuario.protocolo =
+    "PROTO-" +
+    Math.floor(100000 + Math.random() * 900000);
+
+  usuario.codigoAssinante =
+    "ASS-" +
+    Math.floor(10000 + Math.random() * 90000);
+
+  fecharModal();
+
+  addBotMessage(`
+    ✅ Pagamento finalizado com sucesso.<br><br>
+
+    Código assinante:
+    <strong>
+      ${usuario.codigoAssinante}
+    </strong><br>
+
+    Protocolo:
+    <strong>
+      ${usuario.protocolo}
+    </strong><br><br>
+
+    Obrigada por assinar conosco ❤️
+  `);
+}
+
+/* =========================
+ASSINANTE
+========================= */
+
+function fluxoAssinante(message) {
+
+  if (etapa === "assinante_nome") {
+
+    usuario.nome = message;
+
+    etapa = "assinante_email";
+
+    addBotMessage("Informe o e-mail cadastrado.");
+
+    return;
+  }
+
+  if (etapa === "assinante_email") {
+
+    usuario.email = message;
+
+    etapa = "assinante_telefone";
+
+    addBotMessage("Informe o telefone com DDD.");
+
+    return;
+  }
+
+  if (etapa === "assinante_telefone") {
+
+    usuario.telefone = message;
+
+    etapa = "assinante_cpf";
+
+    addBotMessage("Agora informe seu CPF.");
+
+    return;
+  }
+
+  if (etapa === "assinante_cpf") {
+
+    const clienteEncontrado =
+      identificarCliente();
+
+    usuario.cpf = message;
+
+    if (clienteEncontrado) {
+
+      addBotMessage(`
+        ✅ Cliente identificado com sucesso.
+      `);
+
+    } else {
+
+      addBotMessage(`
+        ⚠️ Cadastro não localizado automaticamente,
+        mas podemos continuar.
+      `);
+    }
+
+    etapa = "ura_assinante";
+
+    mostrarMenuAssinante();
+
+    return;
+  }
+
+  if (etapa === "ura_assinante") {
+
+    addBotMessage("Escolha uma opção do menu.");
+
+    return;
+  }
+
+  enviarMensagemAssinanteParaIA(message);
+}
+
+function identificarCliente() {
+
+  return true;
+}
+
+function mostrarMenuAssinante() {
+
+  addOptions([
+
+    {
+      label: "01 - Assinatura",
+      action: "menuAssinatura()"
+    },
+
+    {
+      label: "02 - Financeiro",
+      action: "menuFinanceiro()"
+    },
+
+    {
+      label: "03 - Entrega",
+      action: "menuEntrega()"
+    },
+
+    {
+      label: "04 - Produto digital",
+      action: "menuProdutoDigital()"
+    },
+
+    {
+      label: "05 - Comercial / Upgrade",
+      action: "menuComercial()"
+    },
+
+    {
+      label: "06 - Relacionamento",
+      action: "menuRelacionamento()"
+    },
+
+    {
+      label: "07 - Atendimento humano",
+      action: "falarComHumano()"
+    },
+
+    {
+      label: "⬅ Voltar início",
+      action: "voltarTelaInicial()"
+    }
+
+  ]);
+}
+
+function menuAssinatura() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "Cancelamento",
+      action:
+        "selecionarAtendimentoAssinante('cancelamento')"
+    },
+
+    {
+      label: "Upgrade",
+      action:
+        "selecionarAtendimentoAssinante('upgrade')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function menuFinanceiro() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "2ª via boleto",
+      action:
+        "selecionarAtendimentoAssinante('boleto')"
+    },
+
+    {
+      label: "PIX",
+      action:
+        "selecionarAtendimentoAssinante('pix')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function menuEntrega() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "Jornal não recebido",
+      action:
+        "selecionarAtendimentoAssinante('entrega')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function menuProdutoDigital() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "Erro login",
+      action:
+        "selecionarAtendimentoAssinante('login')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function menuComercial() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "Plano premium",
+      action:
+        "selecionarAtendimentoAssinante('premium')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function menuRelacionamento() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  addOptions([
+    {
+      label: "Reclamação",
+      action:
+        "selecionarAtendimentoAssinante('reclamacao')"
+    },
+
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function selecionarAtendimentoAssinante(tipo) {
+
+  etapa = tipo;
+
+  addBotMessage(`
+    Conte mais detalhes sobre sua solicitação.
+  `);
+
+  addOptions([
+    {
+      label: "⬅ Voltar",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+async function enviarMensagemAssinanteParaIA(message) {
+
+  addBotMessage("CECI analisando...");
+
+  const response = await fetch("/chat", {
+
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json"
+    },
+
+    body: JSON.stringify({
+      message: `
+      Cliente:
+      ${usuario.nome}
+
+      Categoria:
+      ${etapa}
+
+      Mensagem:
+      ${message}
+      `
+    })
+  });
+
+  const data = await response.json();
+
+  document.querySelectorAll(".bot-message")
+    [
+      document.querySelectorAll(".bot-message").length - 1
+    ].remove();
+
+  addBotMessage(`
+    ${data.reply}<br><br>
+
+    Protocolo:
+    <strong>
+      PROTO-${Math.floor(100000 + Math.random() * 900000)}
+    </strong>
+  `);
+
+  addOptions([
+    {
+      label: "⬅ Voltar menu",
+      action: "voltarMenuAssinante()"
+    }
+  ]);
+}
+
+function voltarMenuAssinante() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  mostrarMenuAssinante();
+}
+
+function voltarTelaInicial() {
+
+  document.querySelectorAll(".options")
+    .forEach(opt => opt.remove());
+
+  trilha = "";
+  etapa = "inicio";
+
+  addOptions([
+    {
+      label: "Quero assinar o jornal",
+      action: "selecionarTrilha('novo')"
+    },
+
+    {
+      label: "Já sou assinante",
+      action: "selecionarTrilha('assinante')"
+    }
+  ]);
+}
+
+function falarComHumano() {
+
+  addBotMessage(`
+    ☎ Central de Assinantes<br><br>
+
+    (11) 4002-2025<br><br>
+
+    atendimento@jornal.com.br
+  `);
+}
+
+/* =========================
+UTIL
+========================= */
+
+function abrirModal(content) {
+
+  document.getElementById("modal-body")
+    .innerHTML = content;
+
+  document.getElementById("payment-modal")
+    .classList.add("active");
+}
+
+function fecharModal() {
+
+  document.getElementById("payment-modal")
+    .classList.remove("active");
+}
+
+function copiarPix() {
+
+  navigator.clipboard.writeText(
+    document.querySelector(".pix-code")
+      .innerText
+  );
+
+  alert("PIX copiado.");
+}
+
+function baixarBoleto() {
+
+  alert("Boleto gerado.");
+}
+
+function iniciarContador() {
+
+  let tempo = 60;
+
+  const contador =
+    document.getElementById("contador");
+
+  const intervalo = setInterval(() => {
+
+    tempo--;
+
+    contador.innerText = tempo;
+
+    if (tempo <= 0) {
+
+      clearInterval(intervalo);
+
+      contador.innerText = "expirado";
+    }
+
+  }, 1000);
+}
+
+</script>
+
+</body>
+</html>
