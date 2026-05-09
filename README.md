@@ -1,5 +1,11 @@
 # 🤖 SAC Inteligente IA
 
+## 🚀 Deploy Online
+
+https://sac-inteligente-ia.onrender.com
+
+*** 
+
 Sistema inteligente de atendimento omnichannel para assinaturas de jornal, desenvolvido com IA, Flask e integração com OpenAI.
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python)
